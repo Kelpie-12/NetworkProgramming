@@ -124,7 +124,7 @@ LPSTR FormatIPaddress(const char* sz_message, DWORD dwNetwork)
 {
 	char sz_buffer[256]{};
 	sprintf(sz_buffer, "%s:\t %i.%i.%i.%i;\n", sz_message, FIRST_IPADDRESS(dwNetwork), SECOND_IPADDRESS(dwNetwork), THIRD_IPADDRESS(dwNetwork), FOURTH_IPADDRESS(dwNetwork));
-	return sz_buffer;
+	return sz_buffer; 
 }
 LPSTR FormatMessageWithNumber(const char* sz_message, DWORD number)
 {
