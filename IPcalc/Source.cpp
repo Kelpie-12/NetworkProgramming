@@ -5,9 +5,21 @@
 #include <cstdio>
 #include<iostream>
 
+
+#define IDC_COLUMN_NETWORK_ADDRESS			2000
+#define IDC_COLUMN_BROADCAST_ADDRESS		2001
+#define IDC_COLUMN_NUMBER_OF_IP_ADDRESSED	2002
+#define IDC_COLUMN_NUMBER_OF_HOSTS			2003
+
+
 BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParan, LPARAM lParam);
+BOOL CALLBACK DlgProcSubnets(HWND hwnd, UINT uMsg, WPARAM wParan, LPARAM lParam);
 LPSTR FormatIPaddress(const char* sz_message, DWORD dwNetwork);
 LPSTR FormatMessageWithNumber(const char* sz_message, DWORD number);
+void InitLVColimn(LPLVCOLUMN column, LPSTR text, INT subitem);
+LPSTR FormatLastError();
+CHAR* FormatIPaddress(DWORD IPaddress);
+
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpCmdLine, INT nCmd)
 {
 	DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG), NULL, (DLGPROC)DlgProc, 0);
@@ -29,7 +41,7 @@ BOOL DlgProc(HWND hwnd, UINT uMsg, WPARAM wParan, LPARAM lParam)
 		//https://learn.microsoft.com/en-us/windows/win32/controls/udm-setrange
 		AllocConsole();
 		freopen("CONOUT$", "w", stdout);
-		SendMessage(GetDlgItem(hwnd,IDC_IPADDRESS_MASK), IPM_GETADDRESS, 0, (LPARAM)&dwIpMask);
+		SendMessage(GetDlgItem(hwnd, IDC_IPADDRESS_MASK), IPM_GETADDRESS, 0, (LPARAM)&dwIpMask);
 		std::cout << "WM_INITDIALOG:\n";
 		std::cout << dwIpMask << std::endl;
 	}
@@ -60,10 +72,9 @@ BOOL DlgProc(HWND hwnd, UINT uMsg, WPARAM wParan, LPARAM lParam)
 		{
 			if (HIWORD(wParan) == EN_CHANGE)
 			{
-							
 				SendMessage(GetDlgItem(hwnd, IDC_IPADDRESS_MASK), IPM_GETADDRESS, 0, (LPARAM)&dwIpMask);
 				int i = 1;
-				for (; dwIpMask <<= 1; i++);				
+				for (; dwIpMask <<= 1; i++);
 				sprintf_s(sz_prefix, "%i", i);
 				SendMessage(GetDlgItem(hwnd, IDC_EDIT_PREFIC), WM_SETTEXT, 0, (LPARAM)sz_prefix);
 			}
@@ -73,7 +84,7 @@ BOOL DlgProc(HWND hwnd, UINT uMsg, WPARAM wParan, LPARAM lParam)
 		{
 			if (HIWORD(wParan) == EN_CHANGE)
 			{
-				SendMessage(GetDlgItem(hwnd, IDC_EDIT_PREFIC), WM_GETTEXT, 3, (LPARAM)sz_prefix);			
+				SendMessage(GetDlgItem(hwnd, IDC_EDIT_PREFIC), WM_GETTEXT, 3, (LPARAM)sz_prefix);
 				DWORD dwIPprefix = atoi(sz_prefix);
 				UINT dwIPmask = UINT_MAX;
 				dwIPmask <<= (32 - dwIPprefix);
@@ -105,6 +116,11 @@ BOOL DlgProc(HWND hwnd, UINT uMsg, WPARAM wParan, LPARAM lParam)
 
 		}
 		break;
+		case IDC_BUTTON_SUBNETS:
+		{
+			DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_SUBNETS), hwnd, (DLGPROC)DlgProcSubnets, 0);
+		}
+		break;
 		case IDCANCEL:
 			EndDialog(hwnd, 0);
 			break;
@@ -120,15 +136,161 @@ BOOL DlgProc(HWND hwnd, UINT uMsg, WPARAM wParan, LPARAM lParam)
 	return false;
 }
 
+BOOL DlgProcSubnets(HWND hwnd, UINT uMsg, WPARAM wParan, LPARAM lParam)
+{
+	static HWND hList = GetDlgItem(hwnd, IDC_LIST_SUBNETS);
+	static LVCOLUMN lvcNetworkAddress;
+	static LVCOLUMN lvcBroadCastAddress;
+	static LVCOLUMN lvcNumberOfIpAddress;
+	static LVCOLUMN lvcNumberOfHosts;
+
+	switch (uMsg)
+	{
+	case WM_INITDIALOG:
+	{
+		hList = GetDlgItem(hwnd, IDC_LIST_SUBNETS);
+		InitLVColimn(&lvcNetworkAddress, (LPSTR)"Addres net", 0);//IDC_COLUMN_NETWORK_ADDRESS);		
+		InitLVColimn(&lvcBroadCastAddress, (LPSTR)"Broadcast", 1);//IDC_COLUMN_BROADCAST_ADDRESS);
+		InitLVColimn(&lvcNumberOfIpAddress, (LPSTR)"Number of IP-addres", 2);//IDC_COLUMN_NUMBER_OF_IP_ADDRESSED);
+		InitLVColimn(&lvcNumberOfHosts, (LPSTR)"Number of hosts", 3);//IDC_COLUMN_NUMBER_OF_HOSTS);
+		SendMessage(hList, LVM_INSERTCOLUMN, 0, (LPARAM)&lvcNetworkAddress);
+		SendMessage(hList, LVM_INSERTCOLUMN, 1, (LPARAM)&lvcBroadCastAddress);
+		SendMessage(hList, LVM_INSERTCOLUMN, 2, (LPARAM)&lvcNumberOfIpAddress);
+		SendMessage(hList, LVM_INSERTCOLUMN, 3, (LPARAM)&lvcNumberOfHosts);
+
+		HWND hParent = GetParent(hwnd);
+		HWND hIpAddres = GetDlgItem(hParent, IDC_IPADDRESS_IP);
+		HWND hPrefix = GetDlgItem(hParent, IDC_EDIT_PREFIC);
+		DWORD dwIPaddress;
+		char sz_prefix[16];
+		char sz_class[2];
+		SendMessage(hIpAddres, IPM_GETADDRESS, 0, (LPARAM)&dwIPaddress);
+		SendMessage(hPrefix, WM_GETTEXT, 16, (LPARAM)sz_prefix);
+		DWORD dwPrefix = atoi(sz_prefix);
+		if (dwIPaddress && dwPrefix)
+		{
+			DWORD dwDefoltPrefix = 0;
+			if (FIRST_IPADDRESS(dwIPaddress) < 128)
+			{
+				strcpy(sz_class, "A");
+				dwDefoltPrefix = 8;
+			}
+			else if (FIRST_IPADDRESS(dwIPaddress) < 192)
+			{
+				strcpy(sz_class, "B");
+				dwDefoltPrefix = 16;
+			}
+			else if (FIRST_IPADDRESS(dwIPaddress) < 224)
+			{
+				strcpy(sz_class, "C");
+				dwDefoltPrefix = 24;
+			}
+			DWORD dwSubnetsNumber = 1;
+			DWORD dwDelta = dwPrefix - dwDefoltPrefix;
+			for (;dwDelta > 0;dwDelta--)
+				dwSubnetsNumber *= 2;
+			if (dwSubnetsNumber == 1)
+				dwSubnetsNumber = 0;
+			std::cout << dwDelta << std::endl;
+			std::cout << dwSubnetsNumber << std::endl;
+
+			char sz_message[256]{};
+			DWORD dwHostBits = 32 - dwPrefix;
+			DWORD dwNetorkCapaciti = pow(2, dwHostBits);
+
+			sprintf(sz_message, "Net class '%s' for %i subnets, %i IP-address", sz_class, dwSubnetsNumber, dwNetorkCapaciti);
+			SendMessage(GetDlgItem(hwnd, IDC_STATIC_NUMBER_OF_SUBNETS), WM_SETTEXT, 0, (LPARAM)sz_message);
+
+			for (DWORD i = 0, dwNetworkAddress = dwIPaddress; i < dwSubnetsNumber; i++, dwNetworkAddress += dwNetorkCapaciti)
+			{
+				CHAR szNetworkAddress[256];
+				strcpy(szNetworkAddress, FormatIPaddress(dwNetworkAddress));				
+				LVITEM lvItem;
+				ZeroMemory(&lvItem, sizeof(lvItem));				
+				lvItem.pszText = szNetworkAddress;
+				lvItem.mask = LVIF_TEXT;
+				lvItem.iItem = i;
+				std::cout << lvItem.pszText << std::endl;
+				SendMessage(hList, LVM_INSERTITEM, 0, (LPARAM)&lvItem);
+				std::cout << FormatLastError() << std::endl;
+			}
+		}
+
+	}
+	break;
+	case WM_COMMAND:
+	{
+		switch (LOWORD(wParan))
+		{
+		case IDOK:
+			break;
+		case IDCANCEL:
+			EndDialog(hwnd, 0);
+			break;
+		default:
+			break;
+		}
+	}
+	break;
+	case WM_CLOSE:
+		EndDialog(hwnd, 0);
+		break;
+	default:
+		break;
+	}
+	return false;
+}
+
+void InitLVColimn(LPLVCOLUMN column, LPSTR text, INT subitem)
+{
+	ZeroMemory(column, sizeof(LVCOLUMN));
+	column->mask = LVCF_WIDTH | LVCF_TEXT | LVCF_FMT | LVCF_SUBITEM;
+	column->cx = 150;
+	column->pszText = text;
+	column->iSubItem = subitem;
+	column->fmt = LVCFMT_LEFT;
+}
+
 LPSTR FormatIPaddress(const char* sz_message, DWORD dwNetwork)
 {
 	char sz_buffer[256]{};
 	sprintf(sz_buffer, "%s:\t %i.%i.%i.%i;\n", sz_message, FIRST_IPADDRESS(dwNetwork), SECOND_IPADDRESS(dwNetwork), THIRD_IPADDRESS(dwNetwork), FOURTH_IPADDRESS(dwNetwork));
-	return sz_buffer; 
+	return sz_buffer;
 }
 LPSTR FormatMessageWithNumber(const char* sz_message, DWORD number)
 {
 	char sz_buffer[256]{};
-	sprintf(sz_buffer, "%s:\t %i;\n ",sz_message, number);
+	sprintf(sz_buffer, "%s:\t %i;\n ", sz_message, number);
+	return sz_buffer;
+}
+LPSTR FormatLastError()
+{
+	DWORD dwErrorMessageID = GetLastError();
+	LPSTR lpszMessageBuffer = NULL;
+	DWORD dwSize = FormatMessage
+	(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		dwErrorMessageID,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_ENGLISH_US),
+		(LPSTR)&lpszMessageBuffer,
+		0,
+		NULL
+	);
+	return lpszMessageBuffer;
+}
+
+CHAR* FormatIPaddress(DWORD IPaddress)
+{
+	CHAR sz_buffer[256]{};
+	sprintf
+	(
+		sz_buffer,
+		"%i.%i.%i.%i",
+		FIRST_IPADDRESS(IPaddress),
+		SECOND_IPADDRESS(IPaddress),
+		THIRD_IPADDRESS(IPaddress),
+		FOURTH_IPADDRESS(IPaddress)
+	);
 	return sz_buffer;
 }
