@@ -149,14 +149,18 @@ BOOL DlgProcSubnets(HWND hwnd, UINT uMsg, WPARAM wParan, LPARAM lParam)
 	case WM_INITDIALOG:
 	{
 		hList = GetDlgItem(hwnd, IDC_LIST_SUBNETS);
-		InitLVColimn(&lvcNetworkAddress, (LPSTR)"Addres net", 0);//IDC_COLUMN_NETWORK_ADDRESS);		
-		InitLVColimn(&lvcBroadCastAddress, (LPSTR)"Broadcast", 1);//IDC_COLUMN_BROADCAST_ADDRESS);
-		InitLVColimn(&lvcNumberOfIpAddress, (LPSTR)"Number of IP-addres", 2);//IDC_COLUMN_NUMBER_OF_IP_ADDRESSED);
-		InitLVColimn(&lvcNumberOfHosts, (LPSTR)"Number of hosts", 3);//IDC_COLUMN_NUMBER_OF_HOSTS);
-		SendMessage(hList, LVM_INSERTCOLUMN, 0, (LPARAM)&lvcNetworkAddress);
-		SendMessage(hList, LVM_INSERTCOLUMN, 1, (LPARAM)&lvcBroadCastAddress);
-		SendMessage(hList, LVM_INSERTCOLUMN, 2, (LPARAM)&lvcNumberOfIpAddress);
-		SendMessage(hList, LVM_INSERTCOLUMN, 3, (LPARAM)&lvcNumberOfHosts);
+		InitLVColimn(&lvcNetworkAddress, (LPSTR)"Addres net", 0); //IDC_COLUMN_NETWORK_ADDRESS);		
+		InitLVColimn(&lvcBroadCastAddress, (LPSTR)"Broadcast", 1); //IDC_COLUMN_BROADCAST_ADDRESS);		
+		InitLVColimn(&lvcNumberOfIpAddress, (LPSTR)"Number of IP-addres", 2); //IDC_COLUMN_NUMBER_OF_IP_ADDRESSED);	
+		InitLVColimn(&lvcNumberOfHosts, (LPSTR)"Number of hosts", 3); //IDC_COLUMN_NUMBER_OF_HOSTS);		
+		ListView_InsertColumn(hList, 0, &lvcNetworkAddress);
+		ListView_InsertColumn(hList, 1, &lvcBroadCastAddress);
+		ListView_InsertColumn(hList, 2, &lvcNumberOfIpAddress);
+		ListView_InsertColumn(hList, 3, &lvcNumberOfHosts);
+		//SendMessage(hList, LVM_INSERTCOLUMN, 0, (LPARAM)&lvcNetworkAddress);
+		//SendMessage(hList, LVM_INSERTCOLUMN, 1, (LPARAM)&lvcBroadCastAddress);
+		//SendMessage(hList, LVM_INSERTCOLUMN, 2, (LPARAM)&lvcNumberOfIpAddress);
+		//SendMessage(hList, LVM_INSERTCOLUMN, 3, (LPARAM)&lvcNumberOfHosts);
 
 		HWND hParent = GetParent(hwnd);
 		HWND hIpAddres = GetDlgItem(hParent, IDC_IPADDRESS_IP);
@@ -204,16 +208,18 @@ BOOL DlgProcSubnets(HWND hwnd, UINT uMsg, WPARAM wParan, LPARAM lParam)
 			for (DWORD i = 0, dwNetworkAddress = dwIPaddress; i < dwSubnetsNumber; i++, dwNetworkAddress += dwNetorkCapaciti)
 			{
 				CHAR szNetworkAddress[256];
-				strcpy(szNetworkAddress, FormatIPaddress(dwNetworkAddress));				
-				LVITEM lvItem;
-				ZeroMemory(&lvItem, sizeof(lvItem));				
-				lvItem.pszText = szNetworkAddress;
-				lvItem.mask = LVIF_TEXT;
-				lvItem.iItem = i;
-				std::cout << lvItem.pszText << std::endl;
-				SendMessage(hList, LVM_INSERTITEM, 0, (LPARAM)&lvItem);
-				std::cout << FormatLastError() << std::endl;
+				strcpy(szNetworkAddress, FormatIPaddress(dwNetworkAddress));
+				LVITEM lvi;
+				memset(&lvi, 0, sizeof(lvi));
+				lvi.mask = LVIF_TEXT;   // Text Style
+				lvi.iItem = i;      // choose item  
+				ListView_InsertItem(hList, &lvi);
+				ListView_SetItemText(hList, i, 0, (LPSTR)szNetworkAddress);
+				ListView_SetItemText(hList, i, 1, (LPSTR)"Text test - 1");
+				ListView_SetItemText(hList, i, 2, (LPSTR)"Text test - 2");
+				ListView_SetItemText(hList, i, 3, (LPSTR)"Text test - 3");			
 			}
+
 		}
 
 	}
@@ -247,7 +253,7 @@ void InitLVColimn(LPLVCOLUMN column, LPSTR text, INT subitem)
 	column->mask = LVCF_WIDTH | LVCF_TEXT | LVCF_FMT | LVCF_SUBITEM;
 	column->cx = 150;
 	column->pszText = text;
-	column->iSubItem = subitem;
+	column->iSubItem = 5;
 	column->fmt = LVCFMT_LEFT;
 }
 
