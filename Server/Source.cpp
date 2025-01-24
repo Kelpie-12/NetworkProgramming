@@ -1,3 +1,4 @@
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <iostream>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -46,6 +47,7 @@ void main()
 		return;
 	}
 
+	//3
 	iResult = bind(ListenSocket, result->ai_addr, result->ai_addrlen);
 	if (iResult == SOCKET_ERROR)
 	{
@@ -56,6 +58,8 @@ void main()
 		return;
 	}
 	freeaddrinfo(result);
+
+	//4
 	iResult = listen(ListenSocket, SOMAXCONN);
 	if (iResult == SOCKET_ERROR)
 	{
@@ -66,53 +70,71 @@ void main()
 	}
 	cout << "Server started on TCP port " << DEFAULT_PORT << endl;
 
-	SOCKET ClientSocket = accept(ListenSocket, nullptr, nullptr);
-	if (ClientSocket == INVALID_SOCKET)
-	{
-		cout << "Accept failed with error #" << WSAGetLastError();;
-		closesocket(ListenSocket);
-		WSACleanup();
-		return;
-	}
-
-	//closesocket(ClientSocket);
-	closesocket(ListenSocket);
-	char recvbuffer[BUTTER_SIZE]{};
-	int received = 0;
+	//5 
 	do
 	{
-		received = recv(ClientSocket, recvbuffer, BUTTER_SIZE, 0);
-		if (received > 0)
+		char sz_client_name[32];
+		int namelen = 32;
+		SOCKADDR client_socket;
+		ZeroMemory(&client_socket, sizeof(client_socket));
+		SOCKET ClientSocket = accept(ListenSocket, &client_socket, &namelen);
+
+		if (ClientSocket == INVALID_SOCKET)
 		{
-			cout << "Bytes received: " << received << endl;
-			cout << recvbuffer << endl;
-			int iSendResult = send(ClientSocket, "Привет Client", received, 0);
-			if (iSendResult == SOCKET_ERROR)
-			{
-				cout << "Send failed wiht error #" << WSAGetLastError();
-				closesocket(ClientSocket);
-				WSACleanup();
-				return;
-			}
-			cout << "Bytes sent : " << iSendResult << endl;
-		}
-		else if (received == 0)
-			cout << "Connection close..." << endl;
-		else
-		{
-			cout << "Receive failed wiht error #" << WSAGetLastError();
-			closesocket(ClientSocket);
+			cout << "Accept failed with error #" << WSAGetLastError();;
+			closesocket(ListenSocket);
 			WSACleanup();
 			return;
 		}
-	} while (received > 0);
+		sprintf(sz_client_name, "%i.%i.%i.%i.:%i",
+			(unsigned char)client_socket.sa_data[2],
+			(unsigned char)client_socket.sa_data[3],
+			(unsigned char)client_socket.sa_data[4],
+			(unsigned char)client_socket.sa_data[5],
+			(unsigned char)client_socket.sa_data[0]<<8 |(unsigned char)client_socket.sa_data[1]);
+		cout << sz_client_name << endl;
+		//closesocket(ClientSocket);
+		//closesocket(ListenSocket);
 
-	iResult = shutdown(ClientSocket, SD_SEND);
-	if (iResult == SOCKET_ERROR)
-		cout << "Shutdown failed wiht error #" << WSAGetLastError();
+		//6
+		char recvbuffer[BUTTER_SIZE]{};
+		int received = 0;
+		do
+		{
+			received = recv(ClientSocket, recvbuffer, BUTTER_SIZE, 0);
+			if (received > 0)
+			{
+				cout << "Bytes received: " << received << endl;
+				cout << recvbuffer << endl;
+				int iSendResult = send(ClientSocket, "Received message -> Привет Client", received, 0);
+				if (iSendResult == SOCKET_ERROR)
+				{
+					cout << "Send failed wiht error #" << WSAGetLastError();
+					closesocket(ClientSocket);
+					WSACleanup();
+					return;
+				}
+				cout << "Bytes sent : " << iSendResult << endl;
+			}
+			else if (received == 0)
+				cout << "Connection close..." << endl;
+			else
+			{
+				cout << "Receive failed wiht error #" << WSAGetLastError();
+				closesocket(ClientSocket);
+				//WSACleanup();
+				//return;
+			}
+		} while (received > 0);
+		iResult = shutdown(ClientSocket, SD_BOTH);
+		if (iResult == SOCKET_ERROR)
+			cout << "Shutdown failed wiht error #" << WSAGetLastError();
+		closesocket(ClientSocket);
+		WSACleanup();
+	} while (true);
 
-	closesocket(ClientSocket);
-	WSACleanup();
+	//7
+
 	system("pause");
 #endif // CLASS_WORK
 
@@ -140,7 +162,7 @@ void main()
 	send(acceptSocket, text, strlen(text), 0);
 	closesocket(acceptSocket);
 	closesocket(_socket);
-	
+
 	WSACleanup();
 	system("pause");
 #endif // HOME_WORK

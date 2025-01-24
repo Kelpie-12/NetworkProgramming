@@ -94,9 +94,9 @@ void main()
 			cout << "Connection close" << endl;
 		else
 			cout << "Receive failed wiht error #" << WSAGetLastError();
-	} while (received < 0);
+	} while (received > 0);
 
-	iResult = shutdown(ConnectSocket, SD_SEND);
+	iResult = shutdown(ConnectSocket, SD_RECEIVE);
 	if (iResult == SOCKET_ERROR)
 		cout << "Shutdown failed wiht error #" << WSAGetLastError();
 
