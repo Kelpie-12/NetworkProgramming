@@ -9,6 +9,37 @@ using namespace std;
 #define BUTTER_SIZE 1500
 #define CLASS_WORK
 //#define HOME_WORK
+union ClientSocketData
+{
+	SOCKADDR client_socket;
+	unsigned long long data;
+	ClientSocketData(SOCKADDR client_socket)
+	{
+		this->client_socket = client_socket;
+	}
+	unsigned long long get_data()const
+	{
+		return data;
+	}
+	unsigned short get_port()const
+	{
+		return 	(unsigned char)client_socket.sa_data[0] << 8 | (unsigned char)client_socket.sa_data[1];
+
+		//return (data>>16)& 0xFFFF;
+	}
+	char* get_socket(char* sz_client_name) const
+	{
+		sprintf(sz_client_name, "%i.%i.%i.%i.:%i",
+			(unsigned char)client_socket.sa_data[2],
+			(unsigned char)client_socket.sa_data[3],
+			(unsigned char)client_socket.sa_data[4],
+			(unsigned char)client_socket.sa_data[5],
+			(unsigned char)client_socket.sa_data[0] << 8 | (unsigned char)client_socket.sa_data[1]);
+		return sz_client_name;
+	}
+
+};
+
 void main()
 {
 	setlocale(LC_ALL, "");
@@ -86,13 +117,11 @@ void main()
 			WSACleanup();
 			return;
 		}
-		sprintf(sz_client_name, "%i.%i.%i.%i.:%i",
-			(unsigned char)client_socket.sa_data[2],
-			(unsigned char)client_socket.sa_data[3],
-			(unsigned char)client_socket.sa_data[4],
-			(unsigned char)client_socket.sa_data[5],
-			(unsigned char)client_socket.sa_data[0]<<8 |(unsigned char)client_socket.sa_data[1]);
-		cout << sz_client_name << endl;
+
+		ClientSocketData client_data(client_socket);
+		cout << client_data.get_socket(sz_client_name) << endl;
+		//cout << client_data.get_data() << endl;
+		//cout << client_data.get_port() << endl;
 		//closesocket(ClientSocket);
 		//closesocket(ListenSocket);
 

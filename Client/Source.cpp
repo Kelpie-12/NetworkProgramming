@@ -61,25 +61,39 @@ void main()
 		return;
 	}
 
-	const char sendbuffer[] = "Привет сервер";
+	do
+	{
+		char sendbuffer[BUFFER_SIZE] = "Привет сервер";
+		cout << "Введите сообщение для отправки -> " << endl;
+		gets_s(sendbuffer, BUFFER_SIZE);
+		iResult = send(ConnectSocket, sendbuffer, strlen(sendbuffer), 0);
+		sendbuffer[0] = '\0';
+		//сообщение отправленно
+		if (iResult == SOCKET_ERROR)
+		{
+			cout << "Send failed wiht error #" << WSAGetLastError();
+			closesocket(ConnectSocket);
+			WSACleanup();
+			return;
+		}
+		cout << "Bytes sent: " << iResult << endl;
+		cout << endl << "Отправить еще? y\\n " << endl;
+		char v;
+		cin >> v;
+		if (v == 'n')
+		{
+			iResult = shutdown(ConnectSocket, SD_SEND);
+			if (iResult == SOCKET_ERROR)
+			{
+				cout << "Shutdown failed wiht error #" << WSAGetLastError();
+				closesocket(ConnectSocket);
+				WSACleanup();
+				return;
+			}
+			break;
+		}
+	} while (true);
 	char recvbuffer[BUFFER_SIZE]{};
-	iResult = send(ConnectSocket, sendbuffer, strlen(sendbuffer), 0);
-	if (iResult == SOCKET_ERROR)
-	{
-		cout << "Send failed wiht error #" << WSAGetLastError();
-		closesocket(ConnectSocket);
-		WSACleanup();
-		return;
-	}
-	cout << "Bytes sent: " << iResult << endl;
-	iResult = shutdown(ConnectSocket, SD_SEND);
-	if (iResult == SOCKET_ERROR)
-	{
-		cout << "Shutdown failed wiht error #" << WSAGetLastError();
-		closesocket(ConnectSocket);
-		WSACleanup();
-		return;
-	}
 
 	int received = 0;
 	do
