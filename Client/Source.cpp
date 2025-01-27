@@ -65,9 +65,10 @@ void main()
 	{
 		char sendbuffer[BUFFER_SIZE] = "Привет сервер";
 		cout << "Введите сообщение для отправки -> " << endl;
+		cin.getline(sendbuffer, BUFFER_SIZE);
 		gets_s(sendbuffer, BUFFER_SIZE);
 		iResult = send(ConnectSocket, sendbuffer, strlen(sendbuffer), 0);
-		sendbuffer[0] = '\0';
+
 		//сообщение отправленно
 		if (iResult == SOCKET_ERROR)
 		{
@@ -92,27 +93,42 @@ void main()
 			}
 			break;
 		}
-	} while (true);
-	char recvbuffer[BUFFER_SIZE]{};
-
-	int received = 0;
-	do
-	{
-		received = recv(ConnectSocket, recvbuffer, BUFFER_SIZE, 0);
-		if (received > 0)
+		else if (strcmp(sendbuffer, "Exit") == 0)
 		{
-			cout << "Bytes received: " << received << endl;
-			cout << "Received message -> " << recvbuffer << endl;
+			iResult = shutdown(ConnectSocket, SD_SEND);
+			if (iResult == SOCKET_ERROR)
+			{
+				cout << "Shutdown failed wiht error #" << WSAGetLastError();
+				closesocket(ConnectSocket);
+				WSACleanup();
+				return;
+			}
+			break;
 		}
-		else if (received == 0)
-			cout << "Connection close" << endl;
-		else
-			cout << "Receive failed wiht error #" << WSAGetLastError();
-	} while (received > 0);
 
+		sendbuffer[0] = '\0';
+		char recvbuffer[BUFFER_SIZE]{};
+		int received = 0;
+		do
+		{
+			received = recv(ConnectSocket, recvbuffer, BUFFER_SIZE, 0);
+			if (received > 0)
+			{
+				cout << "Bytes received: " << received << endl;
+				cout << "Received message -> " << recvbuffer << endl;
+			}
+			else if (received == 0)
+				cout << "Connection close" << endl;
+			else
+				cout << "Receive failed wiht error #" << WSAGetLastError();
+		} while (received < 0);
+		recvbuffer[0] = '\0';
+
+	} while (true);
 	iResult = shutdown(ConnectSocket, SD_RECEIVE);
 	if (iResult == SOCKET_ERROR)
 		cout << "Shutdown failed wiht error #" << WSAGetLastError();
+
 
 	closesocket(ConnectSocket);
 	WSACleanup();
