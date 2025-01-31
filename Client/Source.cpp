@@ -1,4 +1,4 @@
-#include <iostream>
+п»ї#include <iostream>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
@@ -39,92 +39,89 @@ void main()
 		return;
 	}
 
-	SOCKET ConnectSocket = socket(hInst.ai_family, hInst.ai_socktype, hInst.ai_protocol);
+	SOCKET ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 	if (ConnectSocket == INVALID_SOCKET)
 	{
-		cout << "Socked failed with error #" << WSAGetLastError();;
+		cout << "Socket creation failed with error #" << WSAGetLastError() << endl;
 		freeaddrinfo(result);
 		WSACleanup();
 		return;
 	}
+
+	//3. Connecting to Server:
 	iResult = connect(ConnectSocket, result->ai_addr, result->ai_addrlen);
 	if (iResult == SOCKET_ERROR)
 	{
+		cout << "Connection closed with error #" << WSAGetLastError() << endl;
 		closesocket(ConnectSocket);
 		ConnectSocket = INVALID_SOCKET;
 	}
 	freeaddrinfo(result);
 	if (ConnectSocket == INVALID_SOCKET)
 	{
-		cout << "Unavle to connect to Server" << endl;
+		cout << "Unable to connect to Server" << endl;
 		WSACleanup();
 		return;
 	}
 
+	char sendbuffer[BUFFER_SIZE] = "Hello Server!";
+	bool exit = false;
 	do
 	{
-		char sendbuffer[BUFFER_SIZE] = "Привет сервер";
-		cout << "Введите сообщение для отправки -> " << endl;
-		cin.getline(sendbuffer, BUFFER_SIZE);
-		gets_s(sendbuffer, BUFFER_SIZE);
-		iResult = send(ConnectSocket, sendbuffer, strlen(sendbuffer), 0);
+		char recvbuffer[BUFFER_SIZE]{};
 
-		//сообщение отправленно
+		iResult = send(ConnectSocket, sendbuffer, strlen(sendbuffer), 0);
 		if (iResult == SOCKET_ERROR)
 		{
-			cout << "Send failed wiht error #" << WSAGetLastError();
+			cout << "Send failed with error #" << WSAGetLastError() << endl;
 			closesocket(ConnectSocket);
 			WSACleanup();
 			return;
 		}
 		cout << "Bytes sent: " << iResult << endl;
-		cout << endl << "Отправить еще? y\\n " << endl;
-		char v;
-		cin >> v;
-		if (v == 'n')
+
+		if (strcmp(sendbuffer, "Exit") == 0 || strcmp(sendbuffer, "Bye") == 0)
 		{
+			//Close connection:
 			iResult = shutdown(ConnectSocket, SD_SEND);
 			if (iResult == SOCKET_ERROR)
 			{
-				cout << "Shutdown failed wiht error #" << WSAGetLastError();
+				cout << "shutdown failed with error #" << WSAGetLastError() << endl;
 				closesocket(ConnectSocket);
 				WSACleanup();
 				return;
 			}
-			break;
-		}
-		else if (strcmp(sendbuffer, "Exit") == 0)
-		{
-			iResult = shutdown(ConnectSocket, SD_SEND);
-			if (iResult == SOCKET_ERROR)
-			{
-				cout << "Shutdown failed wiht error #" << WSAGetLastError();
-				closesocket(ConnectSocket);
-				WSACleanup();
-				return;
-			}
-			break;
+			exit = true;
 		}
 
-		sendbuffer[0] = '\0';
-		char recvbuffer[BUFFER_SIZE]{};
 		int received = 0;
-		do
+		//do
+		//{
+		received = recv(ConnectSocket, recvbuffer, BUFFER_SIZE, 0);
+		if (received > 0)
 		{
-			received = recv(ConnectSocket, recvbuffer, BUFFER_SIZE, 0);
-			if (received > 0)
-			{
-				cout << "Bytes received: " << received << endl;
-				cout << "Received message -> " << recvbuffer << endl;
-			}
-			else if (received == 0)
-				cout << "Connection close" << endl;
-			else
-				cout << "Receive failed wiht error #" << WSAGetLastError();
-		} while (received < 0);
-		recvbuffer[0] = '\0';
-
-	} while (true);
+			cout << "Bytes received:    " << received << endl;
+			cout << "Received message:  " << recvbuffer << endl;
+		}
+		else if (received == 0)
+			cout << "Connection closed" << endl;
+		else 
+			cout << "Receive failed with error #" << WSAGetLastError() << endl;
+		if (strcmp(recvbuffer, "No free connection")==0)
+		{
+			shutdown(ConnectSocket, SD_BOTH);
+			exit = true;
+		}
+		
+		//} while (received > 0);
+		if (!exit)
+		{
+			//sendbuffer[0] = 0;
+			ZeroMemory(sendbuffer, BUFFER_SIZE);
+			cout << "Send message ";
+			cin.getline(sendbuffer, BUFFER_SIZE);
+		}
+	} while (!exit);
 	iResult = shutdown(ConnectSocket, SD_RECEIVE);
 	if (iResult == SOCKET_ERROR)
 		cout << "Shutdown failed wiht error #" << WSAGetLastError();
@@ -137,7 +134,7 @@ void main()
 #endif // CLASS_WORK
 
 #ifdef HOME_WORK
-	// Код клиента:
+	// РљРѕРґ РєР»РёРµРЅС‚Р°:
 	WSADATA wsaData;
 	SOCKET _socket;
 	sockaddr_in addr;
@@ -148,7 +145,7 @@ void main()
 	addr.sin_port = htons(20000);
 	connect(_socket, (SOCKADDR*)&addr, sizeof(addr));
 	char buff[BUFFER_SIZE];
-	const char* text = "Первое отправленное сообщение";
+	const char* text = "РџРµСЂРІРѕРµ РѕС‚РїСЂР°РІР»РµРЅРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ";
 	cout << "\nPress Enter to send 'Hello world!' "
 		"to server\n";
 	cin.get();
