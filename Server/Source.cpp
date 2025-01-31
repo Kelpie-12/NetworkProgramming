@@ -40,7 +40,7 @@ union ClientSocketData
 	}
 
 };
-
+void PrintNumberOfClients();
 void HandleClient(LPVOID i);
 SOCKET ClientSocket;
 SOCKET client_sockets[MAX_CONNECTIONS]{};
@@ -119,7 +119,8 @@ void main()
 		int namelen = 32;
 		SOCKADDR client_socket;
 		ZeroMemory(&client_socket, sizeof(client_socket));
-
+		
+		PrintNumberOfClients();
 		if (client_number < MAX_CONNECTIONS)
 		{
 			client_number2[client_number] = (int*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(int));
@@ -150,9 +151,9 @@ void main()
 			shutdown(deny, SD_BOTH);
 			closesocket(deny);
 			cout << ClientSocketData(client_socket).get_socket(sz_client_name) << " was disconnected" << endl;
-			
-		}
 
+		}		
+		Sleep(10);
 
 	} while (true);
 
@@ -189,6 +190,18 @@ void main()
 	WSACleanup();
 	system("pause");
 #endif // HOME_WORK
+
+}
+
+void PrintNumberOfClients()
+{
+	HANDLE hConcole = GetStdHandle(STD_OUTPUT_HANDLE);
+	CONSOLE_SCREEN_BUFFER_INFO info;
+	ZeroMemory(&info, sizeof(info));
+	GetConsoleScreenBufferInfo(hConcole, &info);
+	SetConsoleCursorPosition(hConcole, COORD{ 85, 0 });
+	cout << "Count client: " << client_number<<endl;
+	SetConsoleCursorPosition(hConcole, info.dwCursorPosition);
 
 }
 
